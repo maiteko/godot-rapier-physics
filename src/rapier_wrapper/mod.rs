@@ -9,6 +9,10 @@ pub mod physics_hooks;
 pub mod physics_world;
 pub mod prelude;
 pub mod query;
+#[cfg(feature = "dim3")]
+pub mod sdf;
+#[cfg(feature = "dim3")]
+pub mod sdf_dispatcher;
 pub mod separation_ray;
 pub mod separation_ray_dispatcher;
 pub mod settings;

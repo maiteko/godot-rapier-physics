@@ -28,9 +28,23 @@ use crate::rapier_wrapper::separation_ray::SeparationRayShape;
 #[derive(Copy, Clone, Debug, Default)]
 pub struct SeparationRayDispatcher;
 
+#[cfg(feature = "dim2")]
 pub fn separation_ray_query_dispatcher()
 -> QueryDispatcherChain<SeparationRayDispatcher, DefaultQueryDispatcher> {
     SeparationRayDispatcher.chain(DefaultQueryDispatcher)
+}
+
+/// In 3D, signed distance fields come first ([`SdfDispatcher`]: their pairs with separation
+/// rays too).
+///
+/// [`SdfDispatcher`]: super::sdf_dispatcher::SdfDispatcher
+#[cfg(feature = "dim3")]
+pub fn separation_ray_query_dispatcher() -> QueryDispatcherChain<
+    super::sdf_dispatcher::SdfDispatcher,
+    QueryDispatcherChain<SeparationRayDispatcher, DefaultQueryDispatcher>,
+> {
+    super::sdf_dispatcher::SdfDispatcher
+        .chain(SeparationRayDispatcher.chain(DefaultQueryDispatcher))
 }
 
 /// `pos12` is `g2`'s pose in `g1`'s local frame, and the result follows parry's convention:

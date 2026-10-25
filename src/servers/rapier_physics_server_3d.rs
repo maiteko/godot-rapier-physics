@@ -77,8 +77,10 @@ impl IPhysicsServer3DExtension for RapierPhysicsServer3D {
         self.implementation.heightmap_shape_create()
     }
 
+    /// A signed distance field (`RapierSdfShape`): its data is a field key from
+    /// `sdf::register_field`.
     fn custom_shape_create(&mut self) -> Rid {
-        Rid::Invalid
+        self.implementation.custom_shape_create()
     }
 
     fn shape_set_data(&mut self, shape: Rid, data: Variant) {

@@ -204,6 +204,16 @@ impl RapierPhysicsServerImpl {
     }
 
     #[cfg(feature = "dim3")]
+    pub(super) fn custom_shape_create(&mut self) -> Rid {
+        let physics_data = physics_data();
+        let rid = rid_from_int64(rid_allocate_id());
+        let id = self.next_id();
+        crate::shapes::rapier_sdf_shape::RapierSdfShape::create(id, rid, &mut physics_data.shapes);
+        insert_id_rid(id, rid, &mut physics_data.ids);
+        rid
+    }
+
+    #[cfg(feature = "dim3")]
     pub(super) fn heightmap_shape_create(&mut self) -> Rid {
         let physics_data = physics_data();
         let rid = rid_from_int64(rid_allocate_id());

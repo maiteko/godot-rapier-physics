@@ -13,6 +13,8 @@ use super::rapier_cylinder_shape_3d::RapierCylinderShape3D;
 #[cfg(feature = "dim3")]
 use super::rapier_heightmap_shape_3d::RapierHeightMapShape3D;
 use super::rapier_rectangle_shape::RapierRectangleShape;
+#[cfg(feature = "dim3")]
+use super::rapier_sdf_shape::RapierSdfShape;
 #[cfg(feature = "dim2")]
 use super::rapier_segment_shape_2d::RapierSegmentShape2D;
 use super::rapier_separation_ray_shape::RapierSeparationRayShape;
@@ -57,6 +59,8 @@ pub enum RapierShape {
     #[cfg(feature = "dim3")]
     RapierHeightMapShape3D(RapierHeightMapShape3D),
     RapierRectangleShape(RapierRectangleShape),
+    #[cfg(feature = "dim3")]
+    RapierSdfShape(RapierSdfShape),
     #[cfg(feature = "dim2")]
     RapierSegmentShape2D(RapierSegmentShape2D),
     RapierSeparationRayShape(RapierSeparationRayShape),
@@ -119,6 +123,7 @@ impl_rapier_shape_trait!(
     RapierCylinderShape3D,
     RapierHeightMapShape3D,
     RapierRectangleShape,
+    RapierSdfShape,
     RapierSeparationRayShape,
     RapierWorldBoundaryShape
 );

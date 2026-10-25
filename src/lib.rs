@@ -19,6 +19,9 @@ pub mod fluids;
 mod joints;
 pub mod nodes;
 mod rapier_wrapper;
+/// Signed distance fields as collision shapes (Godot's custom shape).
+#[cfg(feature = "dim3")]
+pub use rapier_wrapper::sdf;
 pub mod servers;
 mod shapes;
 pub mod spaces;
