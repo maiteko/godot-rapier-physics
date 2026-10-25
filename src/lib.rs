@@ -24,12 +24,15 @@ mod shapes;
 pub mod spaces;
 mod types;
 use godot::prelude::*;
-#[cfg(feature = "dim2")]
+// With `embedded`, the library has no entry point of its own: another extension links
+// it and calls `servers::register_server` (servers stage) and `servers::register_scene`
+// (scene stage) from its own `ExtensionLibrary`.
+#[cfg(all(feature = "dim2", not(feature = "embedded")))]
 #[derive(GodotClass)]
 #[class(base=Object, init)]
 /// Used to register the Rapier 2D extension library.
 pub struct RapierPhysics2DExtensionLibrary {}
-#[cfg(feature = "dim2")]
+#[cfg(all(feature = "dim2", not(feature = "embedded")))]
 #[gdextension(entry_symbol = rapier_2d_init)]
 unsafe impl ExtensionLibrary for RapierPhysics2DExtensionLibrary {
     fn min_level() -> InitLevel {
@@ -50,12 +53,12 @@ unsafe impl ExtensionLibrary for RapierPhysics2DExtensionLibrary {
 
     fn on_stage_deinit(_level: InitStage) {}
 }
-#[cfg(feature = "dim3")]
+#[cfg(all(feature = "dim3", not(feature = "embedded")))]
 #[derive(GodotClass)]
 #[class(base=Object, init)]
 /// Used to register the Rapier 3D extension library.
 pub struct RapierPhysics3DExtensionLibrary {}
-#[cfg(feature = "dim3")]
+#[cfg(all(feature = "dim3", not(feature = "embedded")))]
 #[gdextension(entry_symbol = rapier_3d_init)]
 unsafe impl ExtensionLibrary for RapierPhysics3DExtensionLibrary {
     fn min_level() -> InitLevel {

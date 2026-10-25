@@ -17,6 +17,8 @@ test = []
 profiling = ["rapier2d?/profiler", "rapier2d-f64?/profiler", "rapier3d?/profiler", "rapier3d-f64?/profiler"]
 dim2 = []
 dim3 = []
+# Linked into another extension: no entry point of its own (see src/lib.rs).
+embedded = []
 single = []
 double = ["godot/double-precision"]
 api-4-4 = ["godot/api-4-4"]
