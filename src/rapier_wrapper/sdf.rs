@@ -28,9 +28,11 @@ use rapier::parry::query::RayCast;
 use rapier::parry::query::RayIntersection;
 use rapier::parry::shape::Ball;
 use rapier::parry::shape::Capsule;
+use rapier::parry::shape::Compound;
 use rapier::parry::shape::FeatureId;
 use rapier::parry::shape::PolygonalFeature;
 use rapier::parry::shape::Shape;
+use rapier::parry::shape::TriMesh;
 use rapier::parry::shape::TypedShape;
 use rapier::prelude::*;
 
@@ -233,16 +235,23 @@ const CAPSULE_SAMPLES: usize = 5;
 const REFINE_STEPS: usize = 8;
 /// Steps of the search for a convex shape's deepest point.
 const DEEPEST_STEPS: usize = 4;
+/// Probe ids of a compound's parts are its part's index times this plus the part's own
+/// (a part has fewer probes than this).
+const PART_IDS: u32 = 64;
 
 /// The points of `shape`, placed at `pose` in the field's space, that may touch `field`,
-/// nearest first; `None` for shapes this can't probe (only convex shapes: balls, capsules
-/// and shapes with a support map). With `toward` (a direction of motion, field's space),
-/// also the shape's side facing it, which may meet the field first.
+/// nearest first; `None` for shapes this can't probe (balls, capsules, shapes with a
+/// support map, triangle meshes, and compounds of these). With `toward` (a direction of
+/// motion, field's space), also the shape's side facing it, which may meet the field
+/// first.
 ///
 /// Probe ids (for matching contacts between steps): a capsule's samples along its segment
 /// `0..CAPSULE_SAMPLES`, then its nearest point; a polyhedron's deepest point 0, the
 /// corners of its face toward the field `1..=4` and of its face toward `toward` `5..=8`;
-/// another convex shape's deepest point 0 and its point toward `toward` 9.
+/// another convex shape's deepest point 0 and its point toward `toward` 9; a triangle
+/// mesh's vertices by index (every vertex is probed: a mesh is a concave thing, a dug
+/// chunk, with no deepest point to find); a compound's parts' own, each part's offset by
+/// its index times [`PART_IDS`].
 pub fn probes(
     field: &dyn DistanceField,
     pose: &Pose,
@@ -251,7 +260,19 @@ pub fn probes(
 ) -> Option<Vec<Probe>> {
     let mut out = Vec::new();
     let toward = toward.and_then(|v| v.try_normalize());
-    if let Some(ball) = shape.as_shape::<Ball>() {
+    if let Some(compound) = shape.as_shape::<Compound>() {
+        for (i, (part_pose, part)) in compound.shapes().iter().enumerate() {
+            let placed = *pose * *part_pose;
+            for mut probe in probes(field, &placed, part.as_ref(), toward)? {
+                probe.id += i as u32 * PART_IDS;
+                out.push(probe);
+            }
+        }
+    } else if let Some(mesh) = shape.as_shape::<TriMesh>() {
+        for (i, v) in mesh.vertices().iter().enumerate() {
+            out.push(point_probe(field, pose.transform_point(*v), 0.0, i as u32));
+        }
+    } else if let Some(ball) = shape.as_shape::<Ball>() {
         out.push(sphere_probe(field, pose.translation, ball.radius, 0));
     } else if let Some(capsule) = shape.as_shape::<Capsule>() {
         capsule_probes(field, pose, capsule, &mut out);
@@ -481,6 +502,43 @@ pub(crate) mod tests {
         let beside = probes(&Step, &Pose::translation(0.75, 1.05, 0.0), &standing, None).unwrap();
         // Beside the step's side (x = 0.5), 0.25 from it: 0.05 into the capsule.
         assert!((beside[0].dist + 0.05).abs() < 1.0e-2, "{beside:?}");
+    }
+
+    #[test]
+    fn a_compound_probes_each_part_in_place() {
+        // Two balls side by side, the second lower: it touches first.
+        let compound = Compound::new(vec![
+            (Pose::translation(-1.0, 0.0, 0.0), SharedShape::ball(0.5)),
+            (Pose::translation(1.0, -0.2, 0.0), SharedShape::ball(0.5)),
+        ]);
+        let probes = probes(&Plane, &Pose::translation(0.0, 0.6, 0.0), &compound, None).unwrap();
+        assert_eq!(probes.len(), 2);
+        // Nearest first: the lower ball, 0.1 into the ground, its id the second part's.
+        assert!((probes[0].dist + 0.1).abs() < 1.0e-4, "{probes:?}");
+        assert_eq!(probes[0].id, PART_IDS);
+        assert!(probes[0].point.distance(Vector::new(1.0, -0.1, 0.0)) < 1.0e-3);
+        assert!((probes[1].dist - 0.1).abs() < 1.0e-4);
+        assert_eq!(probes[1].id, 0);
+    }
+
+    #[test]
+    fn a_mesh_probes_its_vertices() {
+        // A tetrahedron with one vertex down, 0.1 into the ground.
+        let mesh = TriMesh::new(
+            vec![
+                Vector::new(0.0, -0.1, 0.0),
+                Vector::new(1.0, 1.0, 0.0),
+                Vector::new(-1.0, 1.0, 0.0),
+                Vector::new(0.0, 1.0, 1.0),
+            ],
+            vec![[0, 1, 2], [0, 2, 3], [0, 3, 1], [1, 3, 2]],
+        )
+        .unwrap();
+        let probes = probes(&Plane, &Pose::IDENTITY, &mesh, None).unwrap();
+        assert_eq!(probes.len(), 4);
+        assert!((probes[0].dist + 0.1).abs() < 1.0e-4, "{probes:?}");
+        assert_eq!(probes[0].id, 0);
+        assert!(probes[1..].iter().all(|p| (p.dist - 1.0).abs() < 1.0e-4));
     }
 
     #[test]
